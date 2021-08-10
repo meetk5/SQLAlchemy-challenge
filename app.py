@@ -4,7 +4,7 @@ from sqlalchemy import create_engine,func
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 import datetime as dt
-
+import pandas as pd
 
 # 2. Create an app, being sure to pass __name__
 app = Flask(__name__)
@@ -21,8 +21,8 @@ def home():
         f"<h3>/api/v1.0/precipitation<br>"
         f"/api/v1.0/stations<br>"
         f"/api/v1.0/tobs<br>"
-        f"/api/v1.0/<start><br>"
-        f"/api/v1.0/<start>/<end></h3>")
+        f"/api/v1.0/startdate<br>"
+        f"/api/v1.0/start/end</h3>")
 
 
 # 4. Define what to do when a user hits the /about route
@@ -123,19 +123,65 @@ def start(startdate):
        func.min(Measure.tobs), 
        func.avg(Measure.tobs)]
     date_summary = session.query(*st).\
-    filter(Measure.date > startdate).group_by(Measure.date).all()
+    filter(Measure.date >= startdate).group_by(Measure.date).all()
+
+    date_dict = {}
+    df = pd.DataFrame(date_summary,columns=['Date','Max Temp','Main Temp', 'Avg Temp'])
+    df.set_index('Date')
+    #df.T
+    date_dict = df.to_dict(orient='index')
 
     #active_station_dets = session.query(Measure.date,Measure.tobs).filter(Measure.date > startdate).all()
-    stat_list = []
+    #stat_list = []
 
-    for row in date_summary:
-        date_dict = {}
-        date_dict["date"] = date
-        date_dict["values"] = func.max(Measure.tobs), func.min(Measure.tobs), func.avg(Measure.tobs)
-        stat_list.append(date_dict)
-    #active_stat_dict = dict(active_station_stats)
+    #for row in date_summary:
+     #   date_dict = {}
+      #  date_dict["date"] = date
+       # date_dict["values"] = func.max(Measure.tobs), func.min(Measure.tobs), func.avg(Measure.tobs)
+        #stat_list.append(date_dict)
+    #active_stat_dict = to_dict(date_summary)
     
-    return jsonify(stat_list)
+    return jsonify(date_dict)
+    #return "Welcome to my 'Tobs' page!"
+
+
+@app.route("/api/v1.0/<startdate>/<enddate>")
+def startend(startdate,enddate):
+    print("Server received request for 'StartDate' page...")
+    engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+
+    Base = automap_base()
+    Base.prepare(engine, reflect=True)
+    Measure = Base.classes.measurement
+
+    session = Session(engine) 
+
+   # st_query_date = dt.date(2017,8,18) - dt.timedelta(days = 365)
+
+    st = [Measure.date, 
+       func.max(Measure.tobs), 
+       func.min(Measure.tobs), 
+       func.avg(Measure.tobs)]
+    date_summary = session.query(*st).\
+    filter(Measure.date >= startdate).filter(Measure.date <= enddate).group_by(Measure.date).all()
+
+    date_dict = {}
+    df = pd.DataFrame(date_summary,columns=['Date','Max Temp','Main Temp', 'Avg Temp'])
+    df.set_index('Date')
+    #df.T
+    date_dict = df.to_dict(orient='index')
+
+    #active_station_dets = session.query(Measure.date,Measure.tobs).filter(Measure.date > startdate).all()
+    #stat_list = []
+
+    #for row in date_summary:
+     #   date_dict = {}
+      #  date_dict["date"] = date
+       # date_dict["values"] = func.max(Measure.tobs), func.min(Measure.tobs), func.avg(Measure.tobs)
+        #stat_list.append(date_dict)
+    #active_stat_dict = to_dict(date_summary)
+    
+    return jsonify(date_dict)
     #return "Welcome to my 'Tobs' page!"
 
 if __name__ == "__main__":
